@@ -1,5 +1,5 @@
 {
-    "name": "foxorm/gibberish-detector",
+    "name": "silantifross/gibberish-detector",
     "description": "Determines if text contains gibberish.",
     "type": "library",
     "license": "MIT",
@@ -15,10 +15,19 @@
         {
             "name": "Jo Surikat",
             "email": "jo@surikat.pro"
+        },
+        {
+            "name": "Silantsi Rudnitski",
+            "email": "silanti.rudnitski@gmail.com"
         }
     ],
-    "minimum-stability": "dev",
-    "require": {},
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5"
+    },
     "autoload": {
         "psr-4": {
             "FoxORM\\GibberishDetector\\": "src"
