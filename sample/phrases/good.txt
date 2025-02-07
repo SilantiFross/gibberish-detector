@@ -1,6 +1,22 @@
-rob
-two models
-some long sentence, might suck?
+Yes, I agree with that statement.
+No, I don't think that's the case.
+Maybe, but I am not sure yet.
+I prefer not to answer this question.
+It depends on the situation.
+Yes, I have experienced something similar before.
+No, I have never encountered this issue.
+I think it is a good idea.
+That sounds interesting, tell me more.
+I don't have an opinion on that.
+I strongly disagree with that statement.
+I completely agree with what you said.
+This has happened to me several times.
+I don't know much about this topic.
+I believe it is important to consider all perspectives.
+Yes, I have used this product before.
+No, I have not tried it yet.
+I need more information before making a decision.
+This question is difficult to answer.
+I think that is a reasonable approach.
 Project Gutenberg
 a b c
-

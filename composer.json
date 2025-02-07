@@ -30,7 +30,7 @@
     },
     "autoload": {
         "psr-4": {
-            "FoxORM\\GibberishDetector\\": "src"
+            "SilantiFross\\GibberishDetector\\": "src"
         }
     }
 }

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
-use FoxORM\GibberishDetector\Gibberish;
+use SilantiFross\GibberishDetector\Gibberish;
 
 final class GibberishTest extends TestCase
 {

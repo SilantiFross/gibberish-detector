@@ -1,6 +1,6 @@
 <?php
 
-namespace FoxORM\GibberishDetector;
+namespace SilantiFross\GibberishDetector;
 
 use InvalidArgumentException;
 
@@ -18,33 +18,86 @@ use InvalidArgumentException;
  * @param array $options
  * @return mixed
  * @author Oliver Lillie
+ * @author Silantsi Rudnitski update for php 8.0
  * @author Rob Renaud Python implementation
  */
 class Gibberish
 {
 	protected static string $_accepted_characters = 'abcdefghijklmnopqrstuvwxyz ';
 
-	public static function test(string $text, string $lib_path, $raw = false): float|bool
+	/**
+	 * Analyzes text using a trained library and determines if it meets the threshold criteria.
+	 *
+	 * @param string $text The input text to analyze
+	 * @param string $libraryPath Path to the serialized library file
+	 * @param bool $raw Whether to return raw probability value
+	 * @return float|bool Probability value if $raw=true, boolean result otherwise
+	 * @throws InvalidArgumentException For invalid library file or structure
+	 */
+	public static function test(string $text, string $libraryPath, bool $raw = false): float|bool
 	{
-		if (!file_exists($lib_path)) {
-			throw new InvalidArgumentException("Library file not found: {$lib_path}");
-		}
-		$trained_library = unserialize(file_get_contents($lib_path));
+		$library = self::loadLibrary($libraryPath);
+		self::validateLibrary($library);
 
-		if (!is_array($trained_library) || !isset($trained_library['matrix'], $trained_library['threshold'])) {
-			throw new InvalidArgumentException("Invalid or corrupted library file: {$lib_path}");
+		$probability = self::calculateTransitionProbability($text, $library['matrix']);
+
+		return $raw ? $probability : $probability <= $library['threshold'];
+	}
+
+	/**
+	 * Loads and validates the library from file.
+	 */
+	private static function loadLibrary(string $libraryPath): array
+	{
+		if (!file_exists($libraryPath)) {
+			throw new InvalidArgumentException("Library file not found: {$libraryPath}");
 		}
 
-		$value = self::_averageTransitionProbability($text, $trained_library['matrix']);
-		if ($raw === true) {
-			return $value;
+		$contents = file_get_contents($libraryPath);
+		if ($contents === false) {
+			throw new InvalidArgumentException("Failed to read library file: {$libraryPath}");
 		}
 
-		if ($value <= $trained_library['threshold']) {
-			return true;
+		$library = unserialize($contents);
+		if ($library === false) {
+			throw new InvalidArgumentException("Corrupted library file: {$libraryPath}");
 		}
 
-		return false;
+		return $library;
+	}
+
+	/**
+	 * Validates the library structure.
+	 */
+	private static function validateLibrary(array $library): void
+	{
+		$requiredKeys = ['matrix', 'threshold'];
+
+		if (count(array_intersect($requiredKeys, array_keys($library))) !== count($requiredKeys)) {
+			throw new InvalidArgumentException("Invalid library structure - missing required components");
+		}
+	}
+
+	/**
+	 * Calculates transition probability.
+	 */
+	private static function calculateTransitionProbability(string $text, array $matrix): float
+	{
+		$log_prob = 1.0;
+		$transition_ct = 0;
+
+		$pos = array_flip(str_split(self::$_accepted_characters));
+		$filtered_line = str_split(self::_normalise($text));
+		$a = false;
+		foreach ($filtered_line as $b) {
+			if ($a !== false) {
+				$log_prob += $matrix[$pos[$a]][$pos[$b]];
+				$transition_ct += 1;
+			}
+			$a = $b;
+		}
+		# The exponentiation translates from log probs to probs.
+		return exp($log_prob / max($transition_ct, 1));
 	}
 
 	protected static function _normalise(string $line): array|string|null
@@ -57,22 +110,14 @@ class Gibberish
 
 	public static function train(string $big_text_file, string $good_text_file, string $bad_text_file, string $lib_path): bool
 	{
-		$errors = [];
-
-		if (is_file($big_text_file) === false) {
-			$errors[] = 'specified big_text_file does not exist';
+		if (!file_exists($big_text_file)) {
+			throw new InvalidArgumentException("Specified big text file not found");
 		}
-		if (is_file($good_text_file) === false) {
-			$errors[] = 'specified good_text_file does not exist';
+		if (!file_exists($good_text_file)) {
+			throw new InvalidArgumentException("Specified goof text file not found");
 		}
-		if (is_file($bad_text_file) === false) {
-			$errors[] = 'specified bad_text_file does not exist';
-		}
-
-		if ($errors) {
-			echo 'File Errors(s):<br>';
-			echo implode('<br>', $errors) . '<br><br>';
-			return false;
+		if (!file_exists($bad_text_file)) {
+			throw new InvalidArgumentException("Specified bad text file not found");
 		}
 
 		$pos = array_flip(str_split(self::$_accepted_characters));
@@ -124,12 +169,12 @@ class Gibberish
 		$good_lines = file($good_text_file);
 		$good_probs = [];
 		foreach ($good_lines as $line) {
-			$good_probs[] = self::_averageTransitionProbability($line, $log_prob_matrix);
+			$good_probs[] = self::calculateTransitionProbability($line, $log_prob_matrix);
 		}
 		$bad_lines = file($bad_text_file);
 		$bad_probs = [];
 		foreach ($bad_lines as $line) {
-			$bad_probs[] = self::_averageTransitionProbability($line, $log_prob_matrix);
+			$bad_probs[] = self::calculateTransitionProbability($line, $log_prob_matrix);
 		}
 //      Assert that we actually are capable of detecting the junk.
 		$min_good_probs = min($good_probs);
@@ -149,23 +194,4 @@ class Gibberish
 		])) > 0;
 	}
 
-	public static function _averageTransitionProbability(string $line, array $log_prob_matrix): float
-	{
-//      Return the average transition prob from line through log_prob_mat.
-		$log_prob = 1.0;
-		$transition_ct = 0;
-
-		$pos = array_flip(str_split(self::$_accepted_characters));
-		$filtered_line = str_split(self::_normalise($line));
-		$a = false;
-		foreach ($filtered_line as $b) {
-			if ($a !== false) {
-				$log_prob += $log_prob_matrix[$pos[$a]][$pos[$b]];
-				$transition_ct += 1;
-			}
-			$a = $b;
-		}
-		# The exponentiation translates from log probs to probs.
-		return exp($log_prob / max($transition_ct, 1));
-	}
 }
